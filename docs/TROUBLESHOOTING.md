@@ -27,7 +27,7 @@ python -m scripts.environment_checker --json
 
 ### UI starts but install button fails
 
-1. Confirm you are in the intended conda env: `conda activate dataset_anonymizer`
+1. Confirm you are in the intended conda env: `conda activate privagen`
 2. Check disk space (15+ GB free).
 3. Read the **Setup terminal** in the UI for the exact pip error line.
 4. Retry from CLI for a full log:
@@ -255,9 +255,9 @@ Redact logs before sharing externally — `security.redact_logs` helps but revie
 
 ```bash
 conda deactivate
-conda env remove -n dataset_anonymizer -y
-conda create -n dataset_anonymizer python=3.10 -y
-conda activate dataset_anonymizer
+conda env remove -n privagen -y
+conda create -n privagen python=3.10 -y
+conda activate privagen
 pip install -r requirements-ui.txt
 python app.py
 # Install from UI again
