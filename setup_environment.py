@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Bootstrap dataset_anonymizer (CLI companion to the Web UI Setup Environment).
+Bootstrap PrivaGen-Anonymizer (CLI companion to the Web UI Setup Environment).
 
 Usage:
     python setup_environment.py
@@ -22,7 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 REQUIREMENTS = ROOT / "requirements.txt"
 REQUIREMENTS_UI = ROOT / "requirements-ui.txt"
-DEFAULT_ENV = "dataset_anonymizer"
+DEFAULT_ENV = "privagen"
 PYTHON_VERSION = "3.10"
 
 
@@ -110,7 +110,7 @@ def print_status(status: dict) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Bootstrap dataset_anonymizer")
+    parser = argparse.ArgumentParser(description="Bootstrap PrivaGen-Anonymizer")
     parser.add_argument("--env-name", default=DEFAULT_ENV)
     parser.add_argument("--skip-conda", action="store_true")
     parser.add_argument("--skip-install", action="store_true")
