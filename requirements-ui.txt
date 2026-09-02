@@ -1,0 +1,5 @@
+# Minimal deps to launch the Web UI control panel (install full stack from the dashboard)
+flask>=3.0.3,<4
+flask-socketio>=5.4.1,<6
+# Decrypt .env.enc secrets at UI startup (small, pure-wheel)
+cryptography>=43.0.1,<44

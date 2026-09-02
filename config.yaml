@@ -1,0 +1,234 @@
+# =============================================================================
+# dataset_anonymizer — central configuration (paths relative to project root)
+# =============================================================================
+
+# --- PROCESSING SCOPE — IMAGES ONLY (video support deferred indefinitely) ------
+# Official current mode: "Images Only – Video support deferred".
+# The pipeline processes images EXCLUSIVELY. Video files are excluded at ingest by
+# design (see backblaze.ingest_excludes and scripts/utils.discover_images, which only
+# iterate image_extensions). This is intentional design, NOT a temporary gap: there is
+# no video decode/frame-extraction/re-encode/audio path anywhere in the codebase.
+scope:
+  processing_mode: "images_only"   # locked — the only supported mode
+  video_support: "deferred"        # videos are excluded and never processed
+  banner: "Current Scope: Images Only (Video support deferred)"
+
+# --- I/O & batching ------------------------------------------------------------
+batch_size: 32
+num_workers: 4
+pin_memory: true
+image_extensions: [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"]
+
+# --- Security (originals + hardening) ------------------------------------------
+# When true, each image is shutil.copy2'd into temp_processed/.../_source_copies/
+# before any decode — originals in input_raw/ are never opened for write.
+security:
+  copy_input_raw: true
+  level: "standard"              # "standard" | "full" (CLI: --security-level full)
+  verify_ingest_checksums: true  # SHA256 manifest verification after B2 ingest
+  enforce_readonly_ingest: true   # rclone --immutable/--read-only + chmod input_raw
+  crypt_enabled: false            # wrap export remote with rclone crypt (needs RCLONE_CRYPT_PASSWORD)
+  crypt_password_env: "RCLONE_CRYPT_PASSWORD"
+  crypt_password2_env: "RCLONE_CRYPT_PASSWORD2"
+  crypt_salt_env: "RCLONE_CRYPT_SALT"
+  umask: 77                      # octal 0o077 — owner-only new files/dirs
+  backup_before_cleanup: true
+  backups_dir: "backups"
+  secure_wipe: false              # auto true when level=full
+  secure_wipe_passes: 3
+  shred_on_linux: true
+  processed_manifest: "reports/processed_manifest.json"
+  redact_logs: true
+  input_file_mode: 292            # 0o444 read-only originals
+  dir_mode: 448                   # 0o700 sensitive dirs
+
+# --- GPU / CUDA (try GPU first; automatic CPU fallback on any GPU failure) -----
+# Pipeline order on GPU: DeepPrivacy2 → PaddleOCR → IOPaint/LaMa → InsightFace.
+# On failure (CUDA/DLL/OOM/model load): CPU mode — PaddleOCR + OpenCV blur/redact.
+# No user action required; status logged and shown in the Web UI.
+gpu:
+  device: "cuda"              # "cuda" = try GPU first | "cpu" = force CPU-only
+  gpu_id: 0                   # CUDA device index (one process per GPU on CoreWeave)
+  memory_efficient: true      # fp16 inpaint, cudnn benchmark, VRAM-aware batches
+  torch_compile: false
+  allow_tf32: true
+  adaptive_batch: true        # clamp batch_size via torch.cuda.mem_get_info()
+  empty_cache_between_batches: true
+  use_fp16_inpaint: true
+  pin_memory: true
+  prefetch_factor: 2
+  # Set true only on production GPU nodes to fail fast instead of CPU fallback:
+  require_cuda: false
+device: "cuda"              # synced from gpu.device after startup probe
+gpu_id: 0
+cuda_empty_cache_between_batches: true
+
+# --- CPU fallback (automatic; do not disable for 37k unattended runs) ----------
+cpu_fallback:
+  enabled: true               # always allow automatic downgrade
+  face_blur_ksize: 51         # OpenCV Gaussian blur on InsightFace face boxes
+  text_inpaint_radius: 5      # OpenCV TELEA inpaint for PaddleOCR text masks
+  disable_gan_inpaint: true     # no DeepPrivacy2 / IOPaint GAN on CPU path
+
+# --- Retry / routing -----------------------------------------------------------
+max_retries: 3
+min_success_rate: 0.99
+# Safety cap for the outer “wave” loop that keeps draining input_raw + quarantine.
+max_qa_waves: 200
+
+# --- DeepPrivacy2 (face + GAN replacement) -----------------------------------
+# repo_root: path to a local clone of https://github.com/hukkelas/deep_privacy2
+# config_rel: anonymizer config inside that repo (see upstream docs)
+deep_privacy2:
+  repo_root: "vendor/deep_privacy2"  # local clone of https://github.com/hukkelas/deep_privacy2 (relative to project root)
+  config_rel: "configs/anonymizers/face.py"
+  load_detection_cache: false
+  max_resolution: null      # null = no resize; int = max(H,W) for DP2 (matches upstream --max-res)
+  detection_score_threshold: 0.35
+  synthesis:
+    amp: true
+    multi_modal_truncation: false
+    truncation_value: 0.0
+    text_prompt: null
+    text_prompt_strength: 0.5
+
+# --- PaddleOCR (text / plates / signs) ---------------------------------------
+paddleocr:
+  use_angle_cls: true
+  lang: "en"
+  det_db_thresh: 0.3
+  det_db_box_thresh: 0.5
+  show_log: false
+
+# --- LaMa inpainting -----------------------------------------------------------
+# Production default: IOPaint in-process API (lama-cleaner lineage). Falls back to
+# simple_lama if iopaint is not installed (see batch_processor logs).
+lama:
+  backend: "lama_cleaner"   # "lama_cleaner" (IOPaint) | "simple_lama" | "none" | "custom"
+  iopaint_model_name: "lama"
+  device: "cuda"           # "cuda" | "cpu" | null (null => inherit top-level device)
+  mask_dilation: 12
+  # Optional overrides for IOPaint InpaintRequest (e.g. ldm_steps for stronger erase passes)
+  iopaint_request: {}
+  # When backend == "custom", import and call your own wrapper (e.g. advimman/lama clone):
+  custom_module: ""
+  custom_callable: ""
+
+# --- Metadata stripping --------------------------------------------------------
+metadata:
+  exiftool_binary: "exiftool"   # must be on PATH for strongest stripping
+  prefer_exiftool: true
+
+# --- QA thresholds -------------------------------------------------------------
+qa:
+  reuse_processing_ocr: true   # reuse processing-time OCR cache in QA (one PaddleOCR instance)
+  use_crewai_llm: false       # deterministic QA only unless you set OPENAI_API_KEY + true
+  # Optional: re-check output face count via InsightFace (informational unless limits set)
+  max_output_faces_warn: 20
+  # Ultralytics face boxes on output (optional; requires ultralytics + weights)
+  ultralytics_face_verify: false
+  llm_model: "gpt-4o-mini"    # passed to CrewAI / LiteLLM when use_crewai_llm is true
+  text_det_score_fail: 0.85   # PaddleOCR det score above this on OUTPUT => likely readable text remains
+  min_output_face_if_input_face: 0   # 0 = do not enforce face presence; 1 = require >=1 face if input had faces
+  identity_distance_min: 0.35         # cosine distance between original vs output primary face (higher => more change)
+  artifact_ssim_min: 0.75               # structural similarity input vs output (tuned for heavy anonymization)
+  edge_artifact_ratio_max: 0.12         # heuristic: fraction of strong edges inside dilated text mask vs border
+
+# --- InsightFace (optional identity QA) ----------------------------------------
+insightface:
+  enabled: true
+  model_name: "buffalo_l"
+  ctx_id: 0   # GPU id for InsightFace; set -1 for CPU
+
+# --- Ultralytics (optional extra face boxes for QA) --------------------------
+ultralytics:
+  enabled: false
+  face_weights: "yolov8n-face.pt"  # user-supplied or auto-downloaded per ultralytics rules
+
+# --- Reporting -----------------------------------------------------------------
+reports:
+  master_csv: "reports/master_summary.csv"
+  master_pdf: "reports/master_summary.pdf"
+  audit_json: "reports/anonymization_audit.json"
+  # "reportlab" = structured tables (recommended for buyers); "matplotlib" = legacy text page
+  pdf_engine: "reportlab"
+
+# --- Logging -------------------------------------------------------------------
+logging:
+  level: "INFO"
+  logfile: "logs/processing.log"
+  batch_summary_dir: "logs/batch_summaries"
+
+# --- Resume / idempotency ------------------------------------------------------
+resume:
+  lock_stale_sec: 3600        # stale .processing.lock files re-queue after 1h
+
+# --- Runtime monitoring --------------------------------------------------------
+monitoring:
+  resource_monitoring: false  # psutil CPU/RAM snapshots per batch (auto-on in --test-mode)
+  jsonl: "logs/monitoring.jsonl"  # append-only metrics (see scripts/monitoring.py)
+
+# --- High-volume performance (37k+ images) -------------------------------------
+performance:
+  always_monitor: false           # auto true when queue >= monitor_threshold
+  monitor_threshold: 500
+  adaptive_batch_size: true
+  max_batch_size: 64
+  large_dataset_threshold: 5000   # scale batch up when pending >= this
+  medium_dataset_threshold: 1000
+  auto_num_workers: true
+  max_num_workers: 8
+  cpu_reserve: 2
+  ingest_screening: true
+  max_ingest_bytes: 52428800      # 50 MiB
+  max_ingest_pixels: 50000000
+  min_ingest_pixels: 4096
+
+# --- Backblaze B2 (rclone) -----------------------------------------------------
+# Two application keys, two buckets (enforced in scripts/rclone_integration.py):
+#   - b2-readonly + B2_READONLY_KEY → ingest ONLY (rclone copy → input_raw/, batched)
+#   - b2-write    + B2_WRITE_KEY    → export ONLY (rclone copy ← final_clean/, separate bucket)
+# Secrets (B2_KEY_ID, B2_READONLY_KEY, B2_WRITE_KEY) stay in .env — never commit.
+backblaze:
+  # Placeholder defaults — set your own buckets/paths (or via .env / injected env).
+  source_bucket: "your-source-bucket"       # B2_READONLY_BUCKET — source / ingest bucket (read-only)
+  dest_bucket: "your-dest-bucket"           # B2_WRITE_BUCKET — destination / export bucket (separate, RW)
+  ingest_remote_path: "datasets/raw"
+  export_remote_path: "datasets/anonymized"
+  # Protective image-only ingest filters: never list/copy originals, thumbnails, or video.
+  ingest_excludes:
+    - "orig_*"
+    - "thumb_*"
+    - "*.mp4"
+    - "*.mov"
+    - "*.avi"
+  transfer_batch_size: 32
+  max_transfer_retries: 3
+  require_confirm_real_transfer: true
+  quarantine_dir: "quarantine/b2_transfer_failures"
+  verify_after_export: true
+  transfers: 16                             # export parallelism
+  checkers: 64
+  upload_concurrency: 12
+  chunk_size: "48M"
+  bwlimit: "0"
+  # rclone_config: "~/.config/rclone/rclone.conf"
+
+# --- Web UI preferences (optional; also stored in reports/ui_dataset_config.json) ---
+ui:
+  dataset:
+    source_mode: local          # local | b2
+    local_path: input_raw
+    b2_remote_path: ""          # path under source_bucket (read-only ingest)
+    b2_ingest_on_start: false   # batched rclone copy from b2-readonly → input_raw/
+    b2_export_remote_path: ""   # path under dest_bucket (write export)
+    b2_export_on_complete: false  # batched rclone copy from final_clean/ → b2-write
+    sync_to_input_raw: true
+
+# --- Models cache (weights downloaded by your own processes / docs) ------------
+models_dir: "models"
+model_downloads:
+  # Ultralytics YOLOv8-face checkpoint (used only if ultralytics.enabled + qa.ultralytics_face_verify)
+  yolov8_face_weights_url: ""
+  # Set true to attempt a one-time download of yolov8n-face.pt into models/ (empty url skips)
+  auto_download_yolov8_face: false

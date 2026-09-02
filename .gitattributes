@@ -1,0 +1,27 @@
+# Normalize line endings to LF in the repo (production target is Linux).
+# Prevents CRLF drift from Windows editors showing every file as "modified".
+* text=auto eol=lf
+
+# Shell scripts must stay LF to be executable on Linux.
+*.sh text eol=lf
+
+# Keep Windows batch files CRLF if any are added later.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Treat binary assets as binary (no EOL conversion, no diffing).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.zip binary
+*.pt binary
+*.pth binary
+*.onnx binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

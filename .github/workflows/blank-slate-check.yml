@@ -1,0 +1,58 @@
+name: blank-slate-check
+
+# Fails CI if any images or run/audit artifacts are ever committed to this
+# production repo. The repo MUST remain a blank slate — media stays on Backblaze B2.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  blank-slate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fail on committed images
+        run: |
+          echo "Scanning tracked files for image assets..."
+          IMAGES="$(git ls-files -- '*.jpg' '*.jpeg' '*.png' '*.gif' '*.webp' '*.bmp' '*.tif' '*.tiff' || true)"
+          if [ -n "$IMAGES" ]; then
+            echo "::error::Images are committed to the production repo (blank-slate violation):"
+            echo "$IMAGES"
+            exit 1
+          fi
+          echo "OK: no image files tracked."
+
+      - name: Fail on committed run/audit JSON
+        run: |
+          echo "Scanning tracked files for run/audit JSON artifacts..."
+          # Any JSON under the runtime data/report dirs, or obvious audit/manifest files.
+          AUDIT="$(git ls-files -- \
+            'input_raw/**/*.json' \
+            'final_clean/**/*.json' \
+            'manual_review/**/*.json' \
+            'quarantine/**/*.json' \
+            'reports/**/*.json' \
+            '**/*audit*.json' \
+            '**/*manifest*.json' || true)"
+          if [ -n "$AUDIT" ]; then
+            echo "::error::Run/audit JSON artifacts are committed (blank-slate violation):"
+            echo "$AUDIT"
+            exit 1
+          fi
+          echo "OK: no run/audit JSON artifacts tracked."
+
+      - name: Fail on committed secrets / key material
+        run: |
+          echo "Scanning tracked files for secrets and key material..."
+          SECRETS="$(git ls-files -- '.env.enc' '.env.local' '.env.production' 'secret.key' '*.key' 'config/rclone/rclone.conf' || true)"
+          if [ -n "$SECRETS" ]; then
+            echo "::error::Secret/key files are committed (must never be tracked):"
+            echo "$SECRETS"
+            exit 1
+          fi
+          echo "OK: no secret/key files tracked."

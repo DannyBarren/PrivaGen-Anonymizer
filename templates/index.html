@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PrivaGen™ · a Barren Business Development Product</title>
+  <meta name="description" content="PrivaGen by Barren Business Development — enterprise image anonymization control plane" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=bbd2" />
+</head>
+<body class="pg-body">
+  <div class="pg-shell">
+    <nav class="pg-nav" aria-label="Primary">
+      <div class="pg-brand">
+        <div class="pg-brand-mark">PrivaGen<sup>™</sup></div>
+        <p class="pg-brand-metallic" id="pgBrandProductLine">a Barren Business Development Product</p>
+        <span class="pg-brand-tagline">Enterprise image anonymization control plane</span>
+      </div>
+      <span class="pg-nav-meta">Local · Secure · Real-time</span>
+    </nav>
+
+    <div class="pg-header-banners">
+      <div class="pg-alert pg-alert--scope" id="scopeBanner" role="note">
+        <strong>Current Scope: Images Only</strong> — Video support deferred. Video files are automatically
+        excluded and ignored by design; this pipeline processes images exclusively.
+      </div>
+      <div class="pg-alert pg-alert--secure">
+        <strong>Security:</strong> Original images are never modified — all work uses secure copies under
+        <code>temp_processed/</code> per your <code>config.yaml</code> security settings.
+      </div>
+      <div id="cpuFallbackBanner" class="pg-alert pg-alert--warn pg-hidden"></div>
+    </div>
+
+    <!-- Data Safety Guarantees (always visible — non-destructive / copy-only model) -->
+    <section id="dataSafetySection" class="pg-section pg-safety">
+      <div class="pg-section-head">
+        <h2 class="pg-section-title">Data Safety Guarantees</h2>
+        <span class="pg-badge pg-badge--safe">Non-destructive · Copy-only</span>
+      </div>
+      <p class="pg-section-desc" style="margin-bottom: 0.75rem;">
+        Safe mode: the original dataset is only ever <strong>copied</strong>. Nothing is written back to the source.
+      </p>
+      <ul class="pg-safety-list">
+        <li><span class="pg-safe-check">✓</span> Original dataset is <strong>never modified or deleted</strong></li>
+        <li><span class="pg-safe-check">✓</span> All processing runs on <strong>copies only</strong> (secure <code>temp_processed/</code> workspace)</li>
+        <li><span class="pg-safe-check">✓</span> Source directory <code>input_raw/</code> is treated as <strong>read-only</strong> (set to <code>0444</code> on ingest)</li>
+        <li><span class="pg-safe-check">✓</span> A <strong>write guard</strong> blocks any accidental write back to the original location</li>
+        <li><span class="pg-safe-check">✓</span> Failed items are <strong>copied, not moved</strong> — nothing is ever lost from the source</li>
+        <li><span class="pg-safe-check">✓</span> Remote source is read with a <strong>read-only key</strong>; ingest uses <code>rclone copy</code> — never <code>move</code>, <code>sync</code>, or <code>delete</code></li>
+      </ul>
+      <div class="pg-safety-cmds">
+        <div class="pg-section-head" style="margin-bottom: 0.4rem;">
+          <div class="pg-tile-label">
+            Live rclone commands — the <strong>actual</strong> copy-only commands this run will use
+            <span class="pg-badge pg-badge--safe" style="vertical-align: middle;">live</span>
+          </div>
+          <button id="btnRefreshSafetyCmds" type="button" class="pg-btn pg-btn--secondary" style="font-size: 0.7rem; padding: 0.3rem 0.6rem;">Refresh</button>
+        </div>
+        <pre id="safetyRclonePane" class="log-pane pg-safe-pane">Loading actual rclone commands…</pre>
+        <p class="pg-section-desc" style="margin-top: 0.5rem;">
+          Generated from your live configuration (secrets shown as <code>&lt;B2_KEY_ID&gt;</code> placeholders — never real keys).
+          They only <strong>copy</strong> data: the remote source is never modified or deleted and local originals stay untouched
+          (ingest also uses <code>--immutable --read-only</code>). Full, exhaustive reference is in
+          <strong>Input Dataset Configuration → Preview Rclone Commands</strong>.
+        </p>
+      </div>
+    </section>
+
+    <!-- Setup Environment -->
+    <section id="setupSection" class="pg-section pg-section--setup">
+      <div class="pg-section-head">
+        <div>
+          <h2 class="pg-section-title">Setup Environment</h2>
+          <p class="pg-section-desc">Single source of truth for dependency and GPU readiness. Install everything from here — no manual pip required.</p>
+        </div>
+        <div id="overallReadinessBadge" class="pg-badge">Checking…</div>
+      </div>
+
+      <p id="readinessSummary" class="pg-section-desc">Loading environment status…</p>
+
+      <div class="pg-grid-3 pg-stack" style="margin-top: 1rem;">
+        <div class="pg-indicator-row"><span id="dotRequirements" class="status-dot"></span><span>Requirements installed</span></div>
+        <div class="pg-indicator-row"><span id="dotGpu" class="status-dot"></span><span>GPU (CUDA + Torch)</span></div>
+        <div class="pg-indicator-row"><span id="dotPaddle" class="status-dot"></span><span>PaddleOCR</span></div>
+        <div class="pg-indicator-row"><span id="dotIopaint" class="status-dot"></span><span>IOPaint / LaMa</span></div>
+        <div class="pg-indicator-row"><span id="dotDp2" class="status-dot"></span><span>DeepPrivacy2</span></div>
+        <div class="pg-indicator-row"><span id="dotConda" class="status-dot"></span><span id="condaLabel">Python environment</span></div>
+      </div>
+
+      <div id="envWarnings" class="pg-warnings pg-hidden"></div>
+
+      <div style="margin-top: 1rem;">
+        <div class="pg-progress-meta">
+          <span id="installPhaseLabel">Setup progress</span>
+          <span id="installPhasePct">—</span>
+        </div>
+        <div class="pg-progress">
+          <div id="installProgressBar" class="pg-progress-fill"></div>
+        </div>
+      </div>
+
+      <div class="pg-btn-row" style="margin-top: 1rem;">
+        <button id="btnInstallDeps" type="button" class="pg-btn pg-btn--primary">Install All Dependencies Now</button>
+        <button id="btnRefreshEnv" type="button" class="pg-btn pg-btn--secondary">Re-check environment</button>
+      </div>
+
+      <div style="margin-top: 1rem;">
+        <div class="pg-tile-label" style="margin-bottom: 0.5rem;">Setup terminal (live)</div>
+        <pre id="setupTerminal" class="log-pane log-pane--setup"></pre>
+      </div>
+    </section>
+
+    <!-- Input dataset configuration -->
+    <section id="datasetSection" class="pg-section pg-section--featured" title="Safe mode: originals are only copied. Nothing is written back to the source.">
+      <h2 class="pg-section-title">Input Dataset Configuration</h2>
+      <p class="pg-section-desc">Choose where images are read from before processing. Settings are saved to <code>reports/ui_dataset_config.json</code> and applied when you start the pipeline.</p>
+      <p class="pg-alert pg-alert--secure" style="margin: 0.5rem 0 0; font-size: 0.8rem;">
+        <strong>Copy-only:</strong> the selected source is only <em>read and copied</em> — originals are never moved, modified, or deleted.
+      </p>
+
+      <div class="pg-radio-group" style="margin: 1rem 0;">
+        <label class="pg-radio">
+          <input type="radio" name="datasetSourceMode" id="datasetModeLocal" value="local" checked />
+          Local folder
+        </label>
+        <label class="pg-radio">
+          <input type="radio" name="datasetSourceMode" id="datasetModeB2" value="b2" />
+          Backblaze B2 (rclone read-only)
+        </label>
+      </div>
+
+      <div id="datasetLocalPanel" class="pg-stack">
+        <label class="pg-field">
+          <span class="pg-label">Folder path (project-relative or absolute)</span>
+          <div class="pg-btn-row">
+            <input id="datasetLocalPath" type="text" value="input_raw" class="pg-input pg-input--mono" style="flex: 1; min-width: 12rem;" />
+            <input id="datasetFolderPicker" type="file" webkitdirectory directory multiple class="pg-hidden" />
+            <button id="btnBrowseFolder" type="button" class="pg-btn pg-btn--secondary">Browse…</button>
+          </div>
+          <span class="pg-section-desc" style="margin-top: 0.35rem;">Browser folder pick sets a relative path hint; confirm the path matches your project layout.</span>
+        </label>
+      </div>
+
+      <div id="datasetB2Panel" class="pg-stack pg-hidden">
+        <div class="pg-grid-2">
+          <div class="pg-tile">
+            <div class="pg-tile-label">Ingest bucket (read-only key)</div>
+            <div id="b2ReadonlyBucket" class="pg-tile-value" style="font-size: 0.95rem; color: #fff;">—</div>
+            <div class="pg-section-desc">Remote: <code>b2-readonly</code></div>
+          </div>
+          <div class="pg-tile">
+            <div class="pg-tile-label">Export bucket (write key)</div>
+            <div id="b2WriteBucket" class="pg-tile-value" style="font-size: 0.95rem; color: #fff;">—</div>
+            <div class="pg-section-desc">Remote: <code>b2-write</code> (separate bucket)</div>
+          </div>
+        </div>
+        <label class="pg-field">
+          <span class="pg-label">Ingest path (source dataset — read-only copy into pipeline)</span>
+          <input id="datasetB2Path" type="text" placeholder="datasets/raw" class="pg-input pg-input--mono" />
+        </label>
+        <p id="datasetB2Reminder" class="pg-alert pg-alert--warn" style="margin: 0;">
+          <strong>Ingest:</strong> <code>B2_READONLY_KEY</code> only — rclone <code>copy</code> from <code>b2-readonly:&lt;bucket&gt;/path</code> → <code>input_raw/</code> in batches (no uploads, <code>--read-only</code>).
+        </p>
+        <label class="pg-check">
+          <input id="datasetB2IngestOnStart" type="checkbox" />
+          Ingest from B2 into <code>input_raw/</code> when pipeline starts (batched copy)
+        </label>
+        <hr class="pg-divider" />
+        <label class="pg-field">
+          <span class="pg-label">Export path (anonymized products — write bucket)</span>
+          <input id="datasetB2ExportPath" type="text" placeholder="datasets/anonymized" class="pg-input pg-input--mono" />
+        </label>
+        <p class="pg-alert pg-alert--secure" style="margin: 0;">
+          <strong>Export:</strong> <code>B2_WRITE_KEY</code> — rclone <code>copy</code> from <code>final_clean/</code> → <code>b2-write:&lt;dest-bucket&gt;/path</code> after processing (optional crypt remote).
+        </p>
+        <label class="pg-check">
+          <input id="datasetB2ExportOnComplete" type="checkbox" />
+          Upload <code>final_clean/</code> to B2 when pipeline completes
+        </label>
+        <label class="pg-field" style="max-width: 12rem;">
+          <span class="pg-label">rclone transfer batch size</span>
+          <input id="datasetB2BatchSize" type="number" min="1" max="256" value="32" class="pg-input" />
+        </label>
+
+        <section id="rcloneCommandsPanel" class="pg-section" style="margin-top: 0.5rem; padding: 1rem; border-color: rgba(0, 245, 192, 0.2);" title="rclone is configured for copy-only operations on the source dataset.">
+          <div class="pg-section-head" style="margin-bottom: 0.75rem;">
+            <div>
+              <h3 class="pg-section-title" style="font-size: 1rem;">Preview Rclone Commands <span class="pg-badge pg-badge--safe" style="vertical-align: middle;">copy-only</span></h3>
+              <p class="pg-section-desc">Exact commands PrivaGen will run — updates live as you type paths below. All source operations are copy-only.</p>
+            </div>
+            <button id="btnPreviewRclone" type="button" class="pg-btn pg-btn--secondary" style="font-size: 0.75rem; padding: 0.4rem 0.75rem;">Refresh</button>
+          </div>
+          <p id="rcloneSecuritySummary" class="pg-alert pg-alert--secure" style="margin: 0 0 0.75rem; font-size: 0.8rem;">
+            <strong>Read-only / copy-only ingest:</strong> Source images are listed and <em>copied</em> into <code>input_raw/</code> with <code>B2_READONLY_KEY</code> only, via <code>rclone copy --immutable --read-only</code> — <strong>no move, sync, upload, or delete</strong> on your original bucket.
+            <br /><strong>Write export:</strong> Finished anonymized files are <em>copied</em> to a <em>separate</em> destination bucket with <code>B2_WRITE_KEY</code> only. The source and destination are never the same bucket.
+          </p>
+          <p id="rclonePlaceholderHint" class="pg-section-desc" style="margin-bottom: 0.5rem;">
+            Angle brackets like <code>&lt;ingest-path&gt;</code> are placeholders until you enter paths above.
+          </p>
+          <pre id="rcloneCommandsPane" class="log-pane" style="max-height: 18rem; min-height: 10rem;">Select Backblaze B2 above to load command preview…</pre>
+          <p class="pg-section-desc" style="margin-top: 0.5rem;">
+            This command only copies data. The remote source is never modified or deleted; local originals remain untouched and processing works on copies.
+          </p>
+        </section>
+      </div>
+
+      <div class="pg-btn-row" style="align-items: flex-end; margin-top: 1rem;">
+        <div class="pg-count-hero">
+          <div class="pg-tile-label">Total detected images</div>
+          <div id="datasetTotalImages" class="pg-tile-value pg-tile-value--lg">—</div>
+          <div id="datasetScanMeta" class="pg-section-desc" style="margin-top: 0.35rem;"></div>
+        </div>
+        <button id="btnScanDataset" type="button" class="pg-btn pg-btn--accent">Scan Dataset</button>
+        <button id="btnSaveDataset" type="button" class="pg-btn pg-btn--secondary">Save configuration</button>
+        <label class="pg-check">
+          <input id="datasetPersistYaml" type="checkbox" />
+          <span class="pg-section-desc">Also merge into config.yaml (<code>ui.dataset</code> + <code>backblaze</code> paths)</span>
+        </label>
+      </div>
+    </section>
+
+    <div id="pipelineSection" class="pg-stack">
+
+      <div id="pipelineLimitedBanner" class="pg-alert pg-alert--warn pg-hidden" role="status">
+        Pipeline start is disabled until dependencies are installed. Folder counts, logs, reports, and dataset/B2 settings remain available — click <strong>Re-check environment</strong> in Setup after install.
+      </div>
+
+      <!-- Live pipeline status -->
+      <section id="livePipelinePanel" class="pg-section pg-section--live">
+        <div class="pg-section-head">
+          <div>
+            <h2 class="pg-section-title">Live Pipeline Status</h2>
+            <p class="pg-section-desc">Real-time metrics via Socket.IO (updates every ~1.5s while running).</p>
+          </div>
+          <div id="liveStatusBadge" class="live-badge live-idle">Idle</div>
+        </div>
+        <div class="pg-grid-4">
+          <div class="pg-tile">
+            <div class="pg-tile-label">Images in dataset</div>
+            <div id="liveTotalDetected" class="pg-tile-value">—</div>
+          </div>
+          <div class="pg-tile">
+            <div class="pg-tile-label">Processed</div>
+            <div id="liveProcessedLine" class="pg-tile-value" style="color: #fff;">0 / —</div>
+          </div>
+          <div class="pg-tile">
+            <div class="pg-tile-label">Current batch</div>
+            <div id="liveBatchLine" class="pg-tile-value" style="color: #fff;">—</div>
+            <div id="liveBatchSize" class="pg-section-desc">Batch size: —</div>
+          </div>
+          <div class="pg-tile">
+            <div class="pg-tile-label">Throughput</div>
+            <div id="liveThroughput" class="pg-tile-value">—</div>
+            <div id="liveEta" class="pg-section-desc">ETA: —</div>
+          </div>
+        </div>
+        <div style="margin-top: 1rem;">
+          <div class="pg-progress-meta">
+            <span id="liveProgressLabel">Overall progress</span>
+            <span id="liveProgressPct">0%</span>
+          </div>
+          <div class="pg-progress pg-progress--lg">
+            <div id="liveProgressBar" class="pg-progress-fill"></div>
+          </div>
+        </div>
+        <div id="liveComputePanel" class="pg-tile" style="margin-top: 1rem;">
+          <div class="pg-tile-label">Compute mode</div>
+          <span id="liveComputeMode" style="font-weight: 600; color: #fff;">—</span>
+          <p id="liveComputeExplanation" class="pg-section-desc pg-hidden" style="margin-top: 0.5rem;"></p>
+        </div>
+      </section>
+
+      <section class="pg-section">
+        <div class="pg-section-head">
+          <div>
+            <h2 class="pg-section-title">Pipeline Status</h2>
+            <p id="statusLine" class="pg-section-desc">Loading…</p>
+          </div>
+          <div id="readyBadge" class="pg-badge">Pipeline ready</div>
+        </div>
+        <div class="pg-grid-2">
+          <div class="pg-tile">
+            <div class="pg-tile-label">Folder counts</div>
+            <ul id="folderCounts" class="pg-mono-list"></ul>
+          </div>
+          <div class="pg-tile">
+            <div class="pg-tile-label">Run metrics</div>
+            <ul id="runMetrics" class="pg-mono-list">
+              <li>Processed (session): <span id="mProcessed" class="pg-accent-text">0</span></li>
+              <li>Success rate: <span id="mSuccess">—</span></li>
+              <li>Quarantine rate: <span id="mQuarantine">—</span></li>
+              <li>ETA: <span id="mEta">—</span></li>
+              <li>Throughput: <span id="mRate">—</span></li>
+            </ul>
+          </div>
+          <div class="pg-tile" style="grid-column: 1 / -1;">
+            <div class="pg-tile-label">Security &amp; GPU</div>
+            <ul id="securityGpu" class="pg-mono-list">
+              <li>Security level: <span id="secLevel">—</span></li>
+              <li>Crypt export: <span id="secCrypt">—</span></li>
+              <li>GPU device: <span id="gpuDevice">—</span></li>
+              <li>VRAM allocated: <span id="gpuVram">—</span> MB</li>
+              <li>Manifest entries: <span id="manifestEntries">—</span></li>
+            </ul>
+          </div>
+        </div>
+        <div style="margin-top: 1rem;">
+          <div class="pg-progress-meta">
+            <span>Progress</span>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="pg-progress">
+            <div id="progressBar" class="pg-progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="pg-section">
+        <h2 class="pg-section-title">Controls</h2>
+
+        <!-- Mandatory Image-Only mode selection: Start stays disabled until confirmed -->
+        <div id="processingModePanel" class="pg-mode-panel">
+          <div class="pg-mode-head">
+            <span class="pg-badge pg-badge--scope">Images Only</span>
+            <h3 class="pg-mode-title">Processing Mode — selection required before start</h3>
+          </div>
+          <p class="pg-section-desc" style="margin: 0.25rem 0 0.75rem;">
+            You must explicitly choose and confirm the processing mode. This system is
+            <strong>Images Only</strong>; video support is deferred and unavailable.
+          </p>
+          <div class="pg-radio-group">
+            <label class="pg-radio">
+              <input type="radio" name="processingMode" id="modeImagesOnly" value="images_only" />
+              <strong>Images Only</strong>&nbsp;<span class="pg-section-desc">— faces, text/PII &amp; plates in still images</span>
+            </label>
+            <label class="pg-radio pg-radio--disabled" title="Video support is deferred indefinitely">
+              <input type="radio" name="processingMode" id="modeVideoDeferred" value="video" disabled />
+              Video&nbsp;<span class="pg-section-desc">— support deferred (unavailable)</span>
+            </label>
+          </div>
+          <p id="modeConfirmMsg" class="pg-alert pg-alert--secure pg-hidden" role="status" style="margin: 0.75rem 0 0;"></p>
+          <p id="modeRequiredMsg" class="pg-alert pg-alert--warn" role="status" style="margin: 0.75rem 0 0;">
+            Select <strong>Images Only</strong> above to unlock <strong>Start processing</strong>.
+          </p>
+        </div>
+
+        <div class="pg-grid-2">
+          <label class="pg-field">
+            <span class="pg-label">Input folder</span>
+            <input id="pathInputRaw" type="text" value="input_raw" class="pg-input pg-input--mono" />
+          </label>
+          <label class="pg-field">
+            <span class="pg-label">Final output</span>
+            <input id="pathFinalClean" type="text" value="final_clean" class="pg-input pg-input--mono" />
+          </label>
+          <label class="pg-field">
+            <span class="pg-label">Quarantine</span>
+            <input id="pathQuarantine" type="text" value="quarantine" class="pg-input pg-input--mono" />
+          </label>
+          <label class="pg-field">
+            <span class="pg-label">Manual review</span>
+            <input id="pathManualReview" type="text" value="manual_review" class="pg-input pg-input--mono" />
+          </label>
+          <label class="pg-field">
+            <span class="pg-label">Reports</span>
+            <input id="pathReports" type="text" value="reports" class="pg-input pg-input--mono" />
+          </label>
+          <label class="pg-field">
+            <span class="pg-label">Logs</span>
+            <input id="pathLogs" type="text" value="logs" class="pg-input pg-input--mono" />
+          </label>
+          <label class="pg-field" style="grid-column: 1 / -1;">
+            <span class="pg-label">Temp processing</span>
+            <input id="pathTemp" type="text" value="temp_processed" class="pg-input pg-input--mono" />
+          </label>
+        </div>
+        <hr class="pg-divider" />
+        <div class="pg-grid-2">
+          <label class="pg-field">
+            <span class="pg-label">Security level</span>
+            <select id="securityLevel" class="pg-select">
+              <option value="standard">standard</option>
+              <option value="full" selected>full</option>
+            </select>
+            <span class="pg-section-desc" style="margin-top: 0.35rem;">Use <code>full</code> for sensitive-data runs (enables secure wipe of temp files).</span>
+          </label>
+          <label class="pg-field">
+            <span class="pg-label">GPU device</span>
+            <select id="gpuDeviceSelect" class="pg-select">
+              <option value="cuda" selected>cuda</option>
+              <option value="cpu">cpu</option>
+            </select>
+          </label>
+          <div class="pg-stack" style="padding-top: 1.5rem;">
+            <label class="pg-check"><input id="enableCrypt" type="checkbox" /> Enable crypt export</label>
+            <label class="pg-check"><input id="testMode" type="checkbox" /> Test mode (small batches)</label>
+            <label class="pg-check"><input id="forceGpu" type="checkbox" /> Require GPU (--gpu)</label>
+          </div>
+        </div>
+
+        <hr class="pg-divider" />
+
+        <!-- Run scope: Pilot / Test vs Full dataset -->
+        <div id="runScopePanel" class="pg-scope-panel">
+          <span class="pg-label">Run scope</span>
+          <div class="pg-radio-group" style="margin: 0.5rem 0;">
+            <label class="pg-radio">
+              <input type="radio" name="runScope" id="scopePilot" value="pilot" checked />
+              <strong>Pilot / Test Run</strong>
+            </label>
+            <label class="pg-radio">
+              <input type="radio" name="runScope" id="scopeFull" value="full" />
+              <strong>Full Dataset Run</strong>
+            </label>
+          </div>
+          <div id="pilotFields" class="pg-stack">
+            <div class="pg-btn-row" style="margin-bottom: 0.5rem;">
+              <button type="button" class="pg-chip" data-n="1000">First 1,000</button>
+              <button type="button" class="pg-chip" data-n="2000">First 2,000</button>
+              <button type="button" class="pg-chip" data-n="5000">First 5,000</button>
+            </div>
+            <div class="pg-grid-2">
+              <label class="pg-field">
+                <span class="pg-label">Process first N images</span>
+                <input id="pilotImages" type="number" min="1" max="36000" value="1000" class="pg-input" />
+              </label>
+              <label class="pg-field">
+                <span class="pg-label">…or first N batches (optional)</span>
+                <input id="pilotBatches" type="number" min="1" max="4500" placeholder="—" class="pg-input" />
+              </label>
+            </div>
+            <p class="pg-section-desc" style="margin-top: 0.35rem;">
+              Use this for performance and quality checks before running the full dataset. If
+              "N batches" is set it overrides the image count (N&nbsp;=&nbsp;batches&nbsp;×&nbsp;batch&nbsp;size).
+            </p>
+          </div>
+          <p id="fullScopeNote" class="pg-section-desc pg-hidden" style="margin-top: 0.35rem;">
+            Full dataset run — every discovered image will be processed using the batch size below.
+          </p>
+        </div>
+
+        <!-- Batch size (used for BOTH pilot and full runs) -->
+        <div style="margin-top: 1rem;">
+          <div class="pg-progress-meta">
+            <label for="batchSize">Batch size</label>
+            <input id="batchSizeNum" type="number" min="8" max="128" step="1" value="32" class="pg-input" style="width: 5.5rem; padding: 0.3rem 0.5rem;" />
+          </div>
+          <input id="batchSize" type="range" min="8" max="128" step="8" value="32" class="pg-range" />
+          <p class="pg-section-desc" style="margin-top: 0.35rem;">
+            Higher batch size = more throughput but more GPU VRAM (lower it if you hit out-of-memory).
+            Adaptive batching may reduce the per-batch size automatically based on free VRAM.
+          </p>
+        </div>
+
+        <!-- Live run summary -->
+        <p id="runSummary" class="pg-alert pg-alert--secure" style="margin-top: 1rem;" role="status">
+          Pilot run — will process the first 1,000 images in batches of 32.
+        </p>
+        <p class="pg-alert pg-alert--secure" style="margin-top: 1rem; font-size: 0.8rem;">
+          <span class="pg-safe-check">✓</span> <strong>Safe mode:</strong> originals are only copied. Nothing is written back to the source; a write guard blocks any accidental write to <code>input_raw/</code>.
+        </p>
+        <div class="pg-btn-row" style="margin-top: 0.75rem;">
+          <button id="btnStart" type="button" class="pg-btn pg-btn--primary" title="Non-destructive: processing works on copies; originals are never modified or deleted.">Start processing</button>
+          <button id="btnStop" type="button" class="pg-btn pg-btn--danger" disabled>Stop processing</button>
+          <button id="btnRefresh" type="button" class="pg-btn pg-btn--secondary">Refresh folder stats</button>
+        </div>
+        <div class="pg-btn-row" style="margin-top: 0.75rem;">
+          <a id="linkCsv" href="/api/reports/master_summary.csv" target="_blank" rel="noopener" class="pg-link">Open master CSV</a>
+          <a id="linkPdf" href="/api/reports/master_summary.pdf" target="_blank" rel="noopener" class="pg-link">Open master PDF</a>
+          <button id="btnLogs" type="button" class="pg-link">View latest logs</button>
+        </div>
+      </section>
+
+      <section class="pg-section">
+        <h2 class="pg-section-title">Monitoring (recent)</h2>
+        <pre id="monitoringPane" class="log-pane log-pane--short"></pre>
+      </section>
+
+      <section class="pg-section">
+        <h2 class="pg-section-title">Live log</h2>
+        <pre id="liveLog" class="log-pane"></pre>
+      </section>
+    </div>
+
+    <footer class="pg-footer">
+      <p class="pg-brand-metallic pg-footer-metallic" id="pgBrandProductLineFooter">a Barren Business Development Product</p>
+      <p class="pg-footer-note">PrivaGen™ · localhost control plane only</p>
+    </footer>
+  </div>
+  <script src="{{ url_for('static', filename='script.js') }}?v=bbd2"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# =============================================================================
+# render.yaml — TEMPORARY UI preview on Render (Blueprint)
+# =============================================================================
+# Deploys ONLY the lightweight Flask/Flask-SocketIO control panel so you can inspect
+# the UI (Image-Only gate, Pilot/Full run scope, batch-size controls) in a browser.
+#
+# It intentionally installs only requirements-ui.txt — it does NOT pull the heavy
+# GPU/ML stack (torch, paddleocr, iopaint, deep_privacy2), so no real processing runs
+# here. Real anonymization stays on the secure Lambda GPU host.
+#
+# Dual-mode binding (see app.py): Render injects $PORT and we set BIND_HOST=0.0.0.0,
+# so the app listens on 0.0.0.0:$PORT. On Lambda/local (no PORT / BIND_HOST unset) the
+# app still binds to 127.0.0.1:5000 exactly as before.
+services:
+  - type: web
+    name: privagen-ui-preview
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements-ui.txt"
+    startCommand: "python app.py"
+    envVars:
+      - key: BIND_HOST
+        value: "0.0.0.0"
+      # PORT is injected automatically by Render — do not set it manually.

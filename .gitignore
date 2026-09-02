@@ -1,0 +1,110 @@
+# BLANK-SLATE ENFORCEMENT - production repo must contain ZERO images or previous run artifacts
+
+# Media: never commit a pixel. No sample photos, no placeholder faces, no video.
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.bmp
+*.tif
+*.tiff
+*.gif
+*.heic
+*.heif
+*.avif
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+
+# Model weights / vendor clones — fetched at setup, never committed
+models/*
+!models/.gitkeep
+vendor/*
+!vendor/.gitkeep
+!vendor/README.md
+model_cache/
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.safetensors
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# Virtualenv binaries (large, platform-specific) — structure + lockfile ARE committed
+.venv/Lib/site-packages/
+.venv/Scripts/python.exe
+.venv/Scripts/pythonw.exe
+.venv/Scripts/pip*.exe
+.venv/Scripts/*.dll
+.venv/Include/
+
+# Secrets: never commit any real .env. Only .env.example is tracked.
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Encrypted secrets bundle + Fernet key material (never commit — see scripts/secrets_manager.py)
+.env.enc
+secret.key
+*.key
+!*.pub.key
+
+# Generated rclone config (contains B2 keys once a real run creates it)
+config/rclone/rclone.conf
+
+# NOTE: No real .env is EVER committed. Only .env.example (placeholder template) is tracked.
+# Copy it to .env.local, fill in real values locally, then encrypt to .env.enc
+# (see scripts/secrets_manager.py) or inject secrets at launch on the GPU host.
+
+# Runtime / local backups
+backups/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Ephemeral pipeline workspace (recreated each run)
+temp_processed/*
+!temp_processed/.gitkeep
+
+# Runtime data folders — ship EMPTY (blank slate). Never commit client/sample images
+# or their audit sidecars. Populated at runtime; keep only the .gitkeep placeholder.
+input_raw/*
+!input_raw/.gitkeep
+final_clean/*
+!final_clean/.gitkeep
+manual_review/*
+!manual_review/.gitkeep
+quarantine/*
+!quarantine/.gitkeep
+
+# Generated run reports / manifests (regenerated each run)
+reports/*
+!reports/.gitkeep
+
+# Logs (regenerated)
+logs/*
+!logs/.gitkeep
+!logs/batch_summaries/
+logs/batch_summaries/*
+!logs/batch_summaries/.gitkeep
+
+# Local validation scratch
+ui_validation_run/
+.venv/
+Data_Work/

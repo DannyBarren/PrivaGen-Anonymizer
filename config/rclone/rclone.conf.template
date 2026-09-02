@@ -1,0 +1,20 @@
+# rclone.conf template for dataset_anonymizer Backblaze B2 integration
+#
+# Render with setup_rclone.sh (never commit real keys):
+#   bash setup_rclone.sh
+#
+# Remotes:
+#   b2-readonly — ingest from B2 (read-only application key)
+#   b2-write      — export to B2 (read/write application key)
+
+[b2-readonly]
+type = b2
+account = __B2_KEY_ID__
+key = __B2_READONLY_KEY__
+hard_delete = false
+
+[b2-write]
+type = b2
+account = __B2_KEY_ID__
+key = __B2_WRITE_KEY__
+hard_delete = false
