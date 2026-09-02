@@ -5,9 +5,8 @@ name: blank-slate-check
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
-    branches: ["**"]
 
 jobs:
   blank-slate:
