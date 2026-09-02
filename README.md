@@ -51,6 +51,11 @@ Python 3.10, Flask dashboard, DeepPrivacy2, PaddleOCR, IOPaint/LaMa, InsightFace
 ## Quick start
 
 ```bash
+git clone https://github.com/DannyBarren/PrivaGen-Anonymizer.git
+cd PrivaGen-Anonymizer
+```
+
+```bash
 conda create -n privagen python=3.10 -y && conda activate privagen
 # or: python3.10 -m venv .venv && source .venv/bin/activate
 

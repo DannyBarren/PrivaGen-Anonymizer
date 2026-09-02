@@ -30,14 +30,14 @@ You do **not** need CUDA drivers installed to open the UI. GPU drivers are neede
 ## Step 1 — Get the code
 
 ```bash
-git clone <your-repo-url> dataset_anonymizer
-cd dataset_anonymizer
+git clone https://github.com/DannyBarren/PrivaGen-Anonymizer.git
+cd PrivaGen-Anonymizer
 ```
 
 On Windows PowerShell:
 
 ```powershell
-cd C:\path\to\dataset_anonymizer
+cd C:\path\to\PrivaGen-Anonymizer
 ```
 
 ---
@@ -47,8 +47,8 @@ cd C:\path\to\dataset_anonymizer
 **One command** creates an isolated environment:
 
 ```bash
-conda create -n dataset_anonymizer python=3.10 -y
-conda activate dataset_anonymizer
+conda create -n privagen python=3.10 -y
+conda activate privagen
 ```
 
 Verify:
@@ -74,8 +74,9 @@ python app.py
 You should see:
 
 ```text
-dataset_anonymizer — Web control panel
-  UI URL: http://127.0.0.1:5000 (localhost only)
+PrivaGen™ · a Barren Business Development Product
+  Barren Business Development — Web control panel (PrivaGen-Anonymizer)
+  UI URL: http://127.0.0.1:5000 (localhost only — secure)
 ```
 
 Open a browser: **http://127.0.0.1:5000**
@@ -195,7 +196,7 @@ Updates arrive over Socket.IO (`pipeline_status_update`, `batch_start`, `batch_c
 Copy a few images into:
 
 ```text
-dataset_anonymizer/input_raw/
+input_raw/
 ```
 
 Supported extensions: `.jpg`, `.jpeg`, `.png`, `.webp`, `.bmp`, `.tif`, `.tiff`
@@ -224,7 +225,7 @@ reports/         ← summaries and audit
 ### 7c. Or start from the CLI
 
 ```bash
-conda activate dataset_anonymizer
+conda activate privagen
 python -m scripts.main_pipeline --test-mode --max-images 5
 ```
 
@@ -267,9 +268,9 @@ python -m scripts.environment_checker
 ## Windows Anaconda — copy-paste summary
 
 ```powershell
-conda create -n dataset_anonymizer python=3.10 -y
-conda activate dataset_anonymizer
-cd C:\path\to\dataset_anonymizer
+conda create -n privagen python=3.10 -y
+conda activate privagen
+cd C:\path\to\PrivaGen-Anonymizer
 pip install -r requirements-ui.txt
 python app.py
 ```
@@ -281,7 +282,7 @@ Browser → **http://127.0.0.1:5000** → **Install All Dependencies Now** → a
 ## CLI-only setup (no UI)
 
 ```bash
-conda activate dataset_anonymizer
+conda activate privagen
 python setup_environment.py
 python -m scripts.health_check
 python -m scripts.main_pipeline --test-mode --max-images 5

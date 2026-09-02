@@ -924,7 +924,7 @@ def _on_connect() -> None:
 
 def main() -> None:
     print("PrivaGen™ · a Barren Business Development Product")
-    print("  Barren Business Development — Web control panel (dataset_anonymizer)")
+    print("  Barren Business Development — Web control panel (PrivaGen-Anonymizer)")
     _access = "localhost only — secure" if _BIND_HOST == "127.0.0.1" else "network-exposed (cloud preview mode)"
     print(f"  UI URL: http://{_BIND_HOST}:{_BIND_PORT} ({_access})")
     try:

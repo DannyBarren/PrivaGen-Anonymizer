@@ -69,8 +69,8 @@ placeholders; set your own.
 ```bash
 # 1) Work inside the persistent filesystem and clone the repo
 cd /mnt/data
-git clone <your-fork-url> PrivaGen
-cd PrivaGen
+git clone https://github.com/DannyBarren/PrivaGen-Anonymizer.git
+cd PrivaGen-Anonymizer
 
 # 2) Create the environment + system tools
 conda create -n privagen python=3.10 -y && conda activate privagen
@@ -141,7 +141,7 @@ explicit placement on the **persistent volume**.
 ```bash
 # 0) SSH in and work on the persistent filesystem
 cd /mnt/data
-git clone <your-fork-url> PrivaGen && cd PrivaGen
+git clone https://github.com/DannyBarren/PrivaGen-Anonymizer.git && cd PrivaGen-Anonymizer
 
 # 1) Python 3.10 environment (REQUIRED — pins target 3.10; 3.12 has wheel gaps for
 #    paddlepaddle/insightface/torch+cu121). Prefer conda; venv from a 3.10 interpreter also OK.
@@ -205,8 +205,8 @@ model caches at paths under your persistent volume.
 ### Recommended: Web UI on the worker
 
 ```bash
-conda create -n dataset_anonymizer python=3.10 -y
-conda activate dataset_anonymizer
+conda create -n privagen python=3.10 -y
+conda activate privagen
 pip install -r requirements-ui.txt
 python app.py
 ```
@@ -296,7 +296,7 @@ python -m scripts.secrets_manager check
 
 `.env.enc`, `secret.key`, and `*.key` are all git-ignored. Keep `secret.key`
 **off the repo** and backed up separately (e.g. your password manager). On the VM,
-restrict the whole project: `chmod 700 ~/dataset_anonymizer`.
+restrict the whole project: `chmod 700 ~/PrivaGen-Anonymizer`.
 
 **Key delivery options:**
 

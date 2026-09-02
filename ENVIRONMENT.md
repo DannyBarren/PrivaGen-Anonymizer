@@ -30,7 +30,7 @@ Secret-loading control variables:
 | `DATASET_ANON_SECRET_KEY_FILE` | Path to a Fernet key file (default `~/.config/dataset_anonymizer/secret.key`) |
 | `DATASET_ANON_ALLOW_INSECURE_ENV` | Set `1` to bypass the file-permission check (not recommended) |
 
-Never push real keys to any repository (this project targets a **private** repo).
+This repo is **public** — never commit real keys.
 
 | Variable | Purpose |
 |----------|---------|
@@ -53,8 +53,8 @@ Also set `backblaze.source_bucket` and `backblaze.dest_bucket` in `config.yaml`.
 ## Python environment (Anaconda recommended)
 
 ```bash
-conda create -n dataset_anonymizer python=3.10 -y
-conda activate dataset_anonymizer
+conda create -n privagen python=3.10 -y
+conda activate privagen
 ```
 
 **UI only (launch dashboard first):**
