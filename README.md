@@ -1,5 +1,7 @@
 # PrivaGen
 
+> GPU image anonymizer that never writes originals. Faces, on-image text, and EXIF stripped. JSON audit per file.
+
 GPU-first image anonymizer that detects faces/bodies and on-image text, strips EXIF, and writes a JSON audit per file.
 
 It is for teams that need to ship or archive a large photo set without leaving identity or GPS in the files.
