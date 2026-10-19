@@ -10,5 +10,6 @@ Use these guides in order if you are new to the project.
 | **[DEPLOY.md](DEPLOY.md)** | Production on a rented GPU node, B2, scaling to ~37k images |
 | **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** | Install errors, GPU/CPU fallback, Windows issues |
 | **[../ENVIRONMENT.md](../ENVIRONMENT.md)** | `.env` variables and conda/venv notes |
+| **[../evals/README.md](../evals/README.md)** | Synthetic PII corpus + precision/recall eval |
 
 **Generated reports** (after runs): `reports/readiness_summary.md`, `reports/security_report.md`, `reports/gpu_readiness_report.md`, `reports/ui_environment_status.json`.

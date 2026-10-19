@@ -64,6 +64,14 @@ pip install -r requirements-ui.txt
 python app.py
 ```
 
+**CI / eval (no GPU):**
+
+```bash
+pip install -r requirements-ci.txt
+pytest
+python -m scripts.eval_pii
+```
+
 **Full stack (UI install button or CLI):**
 
 ```bash

@@ -32,6 +32,8 @@ python -m scripts.main_pipeline --test-mode --max-images 5
 | `scripts/utils.py` | Config loading, folder scaffolding, `discover_images` (the images-only gate), SHA-256 helpers, structlog setup, audit JSON read/write, master CSV/PDF writers. |
 | `scripts/shared_models.py` | Singletons for PaddleOCR, InsightFace, and the LaMa model manager so a batch loads each model once. |
 | `scripts/security.py` | Path containment (`resolve_under`), secret redaction for logs and reports, ingest hash verification. |
+| `scripts/pii_detect.py` | Deterministic typed PII detector for OCR box text and EXIF/GPS strings (email, phone, SSN, plate, GPS, keys). No GPU. Scores live in `evals/`. |
+| `scripts/eval_pii.py` | Precision / recall per entity type on the synthetic labeled corpus. CI runs this on every PR. |
 | `scripts/performance.py` | Adaptive batch sizing, ingest screening (size/pixel caps), performance report. |
 | `scripts/pipeline_metrics.py` | Throughput, GPU memory, and system resource sampling during a run. |
 | `scripts/processing_locks.py` | Per-stem locks and resume discovery so an interrupted run does not reprocess or collide. |
