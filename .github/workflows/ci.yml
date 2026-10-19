@@ -1,0 +1,61 @@
+name: ci
+
+# Lint + unit tests + measured PII eval. The blank-slate workflow stays separate
+# so a media leak still fails even if this file is edited.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install CI deps
+        run: pip install -r requirements-ci.txt
+      - name: Ruff
+        run: >
+          ruff check
+          scripts/pii_detect.py
+          scripts/eval_pii.py
+          evals/corpus.py
+          tests/test_pii_detect.py
+          tests/test_pii_eval.py
+          tests/test_metadata_strip.py
+          tests/test_security_guards.py
+          tests/conftest.py
+
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install CI deps
+        run: pip install -r requirements-ci.txt
+      - name: Pytest
+        run: pytest
+
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install CI deps
+        run: pip install -r requirements-ci.txt
+      - name: PII precision / recall
+        run: python -m scripts.eval_pii
