@@ -1,0 +1,134 @@
+{
+  "date_utc": "2026-10-19",
+  "command": "python -m scripts.eval_pii",
+  "iou_threshold": 0.5,
+  "documents": 40,
+  "gold_entities": 41,
+  "predicted_entities": 38,
+  "micro": {
+    "precision": 0.9737,
+    "recall": 0.9024,
+    "f1": 0.9367,
+    "tp": 37,
+    "fp": 1,
+    "fn": 4,
+    "support": 41
+  },
+  "per_entity_type": {
+    "EMAIL": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 7,
+      "fp": 0,
+      "fn": 0,
+      "support": 7
+    },
+    "PHONE": {
+      "precision": 1.0,
+      "recall": 0.8333,
+      "f1": 0.9091,
+      "tp": 5,
+      "fp": 0,
+      "fn": 1,
+      "support": 6
+    },
+    "SSN": {
+      "precision": 0.75,
+      "recall": 0.75,
+      "f1": 0.75,
+      "tp": 3,
+      "fp": 1,
+      "fn": 1,
+      "support": 4
+    },
+    "CREDIT_CARD": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "support": 3
+    },
+    "LICENSE_PLATE": {
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1": 0.8571,
+      "tp": 3,
+      "fp": 0,
+      "fn": 1,
+      "support": 4
+    },
+    "GPS": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "support": 4
+    },
+    "PERSON": {
+      "precision": 1.0,
+      "recall": 0.8333,
+      "f1": 0.9091,
+      "tp": 5,
+      "fp": 0,
+      "fn": 1,
+      "support": 6
+    },
+    "ADDRESS": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "support": 2
+    },
+    "IP_ADDRESS": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "support": 1
+    },
+    "AWS_ACCESS_KEY": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "support": 1
+    },
+    "API_KEY": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "support": 2
+    },
+    "DATE_OF_BIRTH": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "support": 1
+    }
+  },
+  "failure_ids": [
+    "neg_isbn_lookalike",
+    "miss_ssn_undashed",
+    "miss_bare_name",
+    "miss_intl_phone",
+    "miss_eu_plate"
+  ]
+}

@@ -75,6 +75,7 @@ from .gpu_runtime import (
     warm_gpu_dummy_forward,
 )
 from .performance import resolve_num_workers
+from .pii_detect import classify_ocr_boxes, scan_exif_pii
 from .security import resolve_under
 from .utils import (
     get_logger,
@@ -974,6 +975,10 @@ def process_batch(
                         "paddleocr_boxes": ocr_boxes,
                         "paddleocr_count": n_text,
                         "mask_dilation_px": int(dilate),
+                    },
+                    "pii": {
+                        "ocr": classify_ocr_boxes(ocr_boxes),
+                        "exif": scan_exif_pii(work_path),
                     },
                     # Back-compat flat keys for older reporting scripts
                     "paddleocr_boxes": ocr_boxes,
